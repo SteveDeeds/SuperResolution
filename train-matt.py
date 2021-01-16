@@ -21,7 +21,6 @@ def getBlurryImage(image):
     small = cv2.resize(
         image,
         dsize=(int(height / 3), int(width / 3)))
-
     blurry = cv2.resize(small, dsize=(height, width),
                         interpolation=cv2.INTER_CUBIC)
     return blurry
