@@ -2,14 +2,17 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import glob
+import os
 
 
 def getModel():
     model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Conv2D(1, 13, padding='same',
-                                     activation='linear', input_shape=(63, 63, 1)))
+    model.add(tf.keras.layers.Conv2D(
+        1, 13, padding='same',
+        activation='linear', input_shape=(63, 63, 1)))
     print("Output shape: " + str(model.output.shape))
-    model.compile(loss=tf.keras.losses.MeanSquaredError(),  optimizer=tf.keras.optimizers.Adam(
+    model.compile(loss=tf.keras.losses.MeanSquaredError(),
+                  optimizer=tf.keras.optimizers.Adam(
         0.05), metrics=['mean_squared_error', 'accuracy'])
     model.summary()
     return model
@@ -69,8 +72,8 @@ def getCoveringPatches(blurry):
 
 def trainModel(model, inputs, outputs):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        "check_{epoch}.hdf5", monitor='val_loss', verbose=1, save_best_only=False,
-        save_weights_only=False)
+        "check_{epoch}.hdf5", monitor='val_loss', verbose=1,
+        save_best_only=False, save_weights_only=False)
 
     inputTensor = tf.constant(inputs, 'float32')
     outputTensor = tf.constant(outputs, 'float32')
@@ -80,17 +83,25 @@ def trainModel(model, inputs, outputs):
 
     history = model.fit(
         x=inputTensor, y=outputTensor,
-        epochs=10, batch_size=10, callbacks=[checkpoint], verbose=1)
+        epochs=10, batch_size=100, callbacks=[checkpoint], verbose=1)
     print(history.history['loss'])
 
 
-def evalModel(model, inputs):
+def evalModel(model, inputs, truths):
     print("Inputs shape: " + str(inputs.shape))
     print("First shape: " + str(np.array(inputs[0]).shape))
-    index = int(inputs.shape[0] / 2)
-    cv2.imwrite("patch-blurry.png", inputs[index, :, :, :] * 255)
-    outputs = model.apply(inputs)
-    cv2.imwrite("patch-sharp.png", np.array(outputs[index, :, :, :]) * 255)
+    for index in range(inputs.shape[0]):
+        outputs = model.apply(inputs)
+
+        outputFile = os.path.join("eval", "comaprison-"+str(index)+".png")
+        print("Output file: " + outputFile)
+        inputImg = inputs[index, :, :, :] * 255
+        outputImg = np.array(outputs[index, :, :, :]) * 255
+        truthImg = truths[index, :, :, :] * 255
+        compositeImg = np.append(inputImg, outputImg, axis=1)
+        compositeImg = np.append(compositeImg, truthImg, axis=1)
+
+        cv2.imwrite(outputFile, compositeImg)
 
 
 def main():
@@ -107,8 +118,9 @@ def main():
     model = getModel()
     trainModel(model, inputs, outputs)
 
+    truths = getCoveringPatches(original)
     covering = getCoveringPatches(blurry)
-    evalModel(model, covering)
+    evalModel(model, covering, truths)
 
 
 if __name__ == "__main__":
