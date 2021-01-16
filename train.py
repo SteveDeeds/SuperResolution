@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import glob
+from tensorflow.keras import backend as K
 
 sharpArray = []
 bluryArray = []
@@ -84,21 +85,48 @@ class CenterAround(tf.keras.constraints.Constraint):
   def get_config(self):
     return {'ref_value': self.ref_value}
 
-# Create a Numpy array from the image file:
-#sharp = np.asarray(cv2.imread("C:\\Temp\\sharp.png")) / 255.
-#blury = np.asarray(cv2.imread("C:\\Temp\\blury.png")) / 255.
-
-#sharpArray = np.expand_dims(sharp,axis=0)
-#bluryArray = np.expand_dims(blury,axis=0)
+def my_psnr(y_true, y_pred):
+    mse = K.mean(K.square(y_true - y_pred)) 
+    if(mse == 0):  # MSE is zero means no noise is present in the signal . 
+                  # Therefore PSNR have no importance. 
+        return 100.0
+    max_pixel = 255.0
+    psnr = 20 * K.log(max_pixel / K.sqrt(mse)) 
+    return psnr 
+    # #difference between true label and predicted label
+    # error = y_true-y_pred    
+    # #square of the error
+    # sqr_error = K.square(error)
+    # #mean of the square of the error
+    # mean_sqr_error = K.mean(sqr_error)
+    # #square root of the mean of the square of the error
+    # sqrt_mean_sqr_error = K.sqrt(mean_sqr_error)
+    # #return the error
+    # return sqrt_mean_sqr_error
 
 loadImages()
 
-model = tf.keras.Sequential()
-model.add(tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear", input_shape=(64,64,3)))
-# model.add(tf.keras.layers.Conv2DTranspose(256, 5, activation='relu', padding='same', input_shape=(64,64,3)))
-# model.add(tf.keras.layers.Conv2DTranspose(128, 3, activation='relu', padding='same'))
-model.add(tf.keras.layers.Conv2DTranspose(3, 1, activation='linear', padding='same', kernel_initializer=tf.keras.initializers.Zeros()))
+l_input = tf.keras.layers.Input(shape=(64,64,3))
+l_scaled_input = tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear")(l_input)
+l_h1 = tf.keras.layers.ZeroPadding2D(5)(l_scaled_input)
+l_h2 = tf.keras.layers.Conv2D(256, 5, activation='relu', padding='valid')(l_h1)
+l_h3 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='valid')(l_h2)
+#l_h4 = tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear")(l_h3)
+#l_h5 = tf.keras.layers.ZeroPadding2D(2)(l_h4)
+l_h6 = tf.keras.layers.Conv2D(3, 5, activation='linear', padding='valid')(l_h3)
+l_output = tf.keras.layers.Add()([l_scaled_input, l_h6])
+model = tf.keras.models.Model(inputs=l_input, outputs=l_output)
 model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+
+
+# model = tf.keras.Sequential()
+# model.add(tf.keras.layers.Input(shape=(64,64,3)))
+# model.add(tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear"))
+# model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='same'))
+# model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same'))
+# model.add(tf.keras.layers.Conv2D(3, 5, activation='linear', padding='same', kernel_initializer=tf.keras.initializers.Zeros()))
+# model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+#model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
 model.summary()
 
 checkpoint = tf.keras.callbacks.ModelCheckpoint("check_{epoch}.hdf5", monitor='val_loss', verbose=1, save_best_only=False,
