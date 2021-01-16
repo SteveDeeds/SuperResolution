@@ -18,9 +18,7 @@ def getModel():
 def getBlurryImage(image):
     height = image.shape[1]
     width = image.shape[0]
-    small = cv2.resize(
-        image,
-        dsize=(int(height / 3), int(width / 3)))
+    small = cv2.resize(image, dsize=(int(height / 4), int(width / 4)))
     blurry = cv2.resize(small, dsize=(height, width),
                         interpolation=cv2.INTER_CUBIC)
     return blurry

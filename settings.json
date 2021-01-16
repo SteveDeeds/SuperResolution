@@ -1,0 +1,16 @@
+{
+  "git.autofetch": true,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "editor.tabSize": 4,
+  "editor.detectIndentation": false,
+  "editor.formatOnSave": true,
+  "window.zoomLevel": 0,
+  "editor.rulers": [
+    80
+  ],
+  "python": {
+    "formatting": {
+      "provider": "autopep8"
+    }
+  }
+}
