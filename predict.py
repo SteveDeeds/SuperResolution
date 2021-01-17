@@ -19,10 +19,10 @@ def my_psnr(y_true, y_pred):
     mse = K.mean(K.square(y_true - y_pred)) 
     if(mse == 0):  # MSE is zero means no noise is present in the signal . 
                   # Therefore PSNR have no importance. 
-        return 100.0
-    max_pixel = 255.0
+        return -100.0
+    max_pixel = 1.0
     psnr = 20 * K.log(max_pixel / K.sqrt(mse)) 
-    return psnr 
+    return -psnr 
 
 truth = cv2.imread("C:\\ffhq\\00000.png")
 #tImage = cv2.cvtColor(tImage, cv2.COLOR_BGR2GRAY)
