@@ -35,6 +35,15 @@ def getModel():
     model.summary()
     return model
 
+def getBiggerModel():
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=(270,270,3)))
+    model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='valid'))
+    model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='valid'))
+    model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
+    model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+    model.summary()
+    return model
 
 def getSmallImage(image):
     height = image.shape[1]
