@@ -17,6 +17,17 @@ def getModel():
     model.summary()
     return model
 
+def getBiggerModel():
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=(64,64,3)))
+    model.add(tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same'))
+    model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='same'))
+    model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same'))
+    model.add(tf.keras.layers.Conv2D(3, 5, activation='linear', padding='same'))
+    model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='same'))
+    model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+    model.summary()
+    return model
 
 def getBlurryImage(image):
     height = image.shape[1]
