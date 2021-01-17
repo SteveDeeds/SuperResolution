@@ -4,6 +4,8 @@ import cv2
 import glob
 import os
 import random
+from tensorflow.keras import backend as K
+
 
 kInputPadding = 4
 kScaleFactor = 4
@@ -35,15 +37,48 @@ def getModel():
     model.summary()
     return model
 
+
+def my_psnr(y_true, y_pred):
+    mse = K.mean(K.square(y_true - y_pred))
+    if(mse == 0):  # MSE is zero means no noise is present in the signal .
+        # Therefore PSNR have no importance.
+        return -100.0
+    max_pixel = 1.0
+    psnr = 20 * K.log(max_pixel / K.sqrt(mse))
+    return -psnr
+    # #difference between true label and predicted label
+    # error = y_true-y_pred
+    # #square of the error
+    # sqr_error = K.square(error)
+    # #mean of the square of the error
+    # mean_sqr_error = K.mean(sqr_error)
+    # #square root of the mean of the square of the error
+    # sqrt_mean_sqr_error = K.sqrt(mean_sqr_error)
+    # #return the error
+    # return sqrt_mean_sqr_error
+
+
 def getBiggerModel():
     model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Input(shape=(270,270,3)))
-    model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='valid'))
-    model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='valid'))
-    model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
-    model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+    inputShape = (kInputPatchSize, kInputPatchSize, 3)
+    print("Input shape: " + str(inputShape))
+    model.add(tf.keras.layers.Conv2DTranspose(
+        32,  # Number of filters
+        9,
+        padding='same',
+        output_padding=kScaleFactor - 1,
+        strides=kScaleFactor,
+        activation='linear',
+        input_shape=inputShape,
+        kernel_initializer='zeros'))
+    model.add(tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same'))
+    model.add(tf.keras.layers.Conv2D(
+        3, 5, activation='hard_sigmoid', padding='same'))
+    model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(
+        0.001), metrics=['mean_squared_error', 'accuracy'])
     model.summary()
     return model
+
 
 def getSmallImage(image):
     height = image.shape[1]
@@ -150,13 +185,13 @@ def addIOFromImage(filename, inputs, outputs):
     print("Original shape: " + str(original.shape))
     print("Small shape: " + str(small.shape))
 
-    (newIns, newOuts) = getTrainingPatches(original, small, 50)
+    (newIns, newOuts) = getTrainingPatches(original, small, 10)
     return (np.append(inputs, newIns, axis=0),
             np.append(outputs, newOuts, axis=0))
 
 
 def main():
-    model = getModel()
+    model = getBiggerModel()
 
     inputs = np.empty((0, kInputPatchSize, kInputPatchSize, 3))
     outputs = np.empty((0, kOutputPatchSize, kOutputPatchSize, 3))
