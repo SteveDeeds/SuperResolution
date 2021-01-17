@@ -28,7 +28,9 @@ truth = cv2.imread("C:\\ffhq\\00000.png")
 #tImage = cv2.cvtColor(tImage, cv2.COLOR_BGR2GRAY)
 #truth = cv2.resize(tImage,(256,256))
 #cv2.imwrite("C:\\Temp\\truth.png", truth)
-tImage = cv2.resize(truth,(64,64))
+tImage = cv2.resize(truth,(270,270))
+tImage = cv2.resize(tImage,(64,64), interpolation=cv2.INTER_CUBIC)
+tImage = cv2.resize(tImage,(270,270), interpolation=cv2.INTER_CUBIC)
 imageArray = []
 imageArray.append(np.asarray(tImage)/ 255.)
 #bicubic = cv2.resize(tImage,(256,256))
@@ -40,7 +42,7 @@ f.writelines(str(PSNR(cv2.resize(truth,(256,256)),cv2.resize(tImage,(256,256))))
 
 
 f.writelines("PSNR after:\n")
-for i in range(1,5001,100):
+for i in range(1,5000,100):
     model = load_model("check_%d.hdf5"%i, custom_objects={'my_psnr': my_psnr})
     output = model.predict(np.asarray(imageArray))
     cv2.imwrite("C:\\Temp\\output_epoc_%d.png"%i, output[0]*255)

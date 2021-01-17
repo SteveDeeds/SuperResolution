@@ -47,10 +47,11 @@ def loadImages():
     fileNames = glob.glob("C:\\ffhq\\*.png")
     for fname in fileNames:
         tImage = cv2.imread(fname)
-        tImage = cv2.resize(tImage,(256,256))
-        #tImage = cv2.cvtColor(tImage, cv2.COLOR_BGR2GRAY)
-        sharpArray.append(np.asarray(tImage) / 255.)
+        tImage = cv2.resize(tImage,(270,270))
+        sharpImage = tImage[7:263, 7:263]
+        sharpArray.append(np.asarray(sharpImage) / 255.)
         tImage = cv2.resize(tImage,(64,64), interpolation=cv2.INTER_CUBIC)
+        tImage = cv2.resize(tImage,(270,270), interpolation=cv2.INTER_CUBIC)
         #tImage = desaturate(tImage, 0.5)
         #tImage = tImage / 10. # darken
         #row,col = tImage.shape
@@ -106,28 +107,25 @@ def my_psnr(y_true, y_pred):
 
 loadImages()
 
-l_input = tf.keras.layers.Input(shape=(64,64,3))
-l_scaled_input = tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear")(l_input)
-l_h1 = tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same')(l_input)
-l_h2 = tf.keras.layers.Conv2D(256, 9, activation='relu', padding='same')(l_h1)
-l_h3 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')(l_h2)
-l_h4 = tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='same')(l_h3)
-l_output = tf.keras.layers.Add()([l_scaled_input, l_h4])
-model = tf.keras.models.Model(inputs=l_input, outputs=l_output)
-model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
-model.summary()
-
-
-# model = tf.keras.Sequential()
-# model.add(tf.keras.layers.Input(shape=(64,64,3)))
-# model.add(tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same'))
-# model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='same'))
-# model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same'))
-# model.add(tf.keras.layers.Conv2D(3, 5, activation='linear', padding='same'))
-# model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='same'))
-# #model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+# l_input = tf.keras.layers.Input(shape=(64,64,3))
+# l_scaled_input = tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear")(l_input)
+# l_h1 = tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same')(l_input)
+# l_h2 = tf.keras.layers.Conv2D(256, 9, activation='relu', padding='same')(l_h1)
+# l_h3 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')(l_h2)
+# l_h4 = tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='same')(l_h3)
+# l_output = tf.keras.layers.Add()([l_scaled_input, l_h4])
+# model = tf.keras.models.Model(inputs=l_input, outputs=l_output)
 # model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
 # model.summary()
+
+
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Input(shape=(270,270,3)))
+model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='valid'))
+model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='valid'))
+model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
+model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+model.summary()
 
 checkpoint = tf.keras.callbacks.ModelCheckpoint("check_{epoch}.hdf5", monitor='val_loss', verbose=1, save_best_only=False,
                                  save_weights_only=False)
