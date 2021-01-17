@@ -1,4 +1,3 @@
-
 *.hdf5
-psnrLog.txt
-Adam0.001.txt
+eval/**
+*.hdf5
