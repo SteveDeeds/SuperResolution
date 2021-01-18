@@ -1,7 +1,9 @@
-kInputPadding = 4
+import tensorflow as tf
+
+kInputPadding = 6
 kScaleFactor = 4
-kOutputPatchSize = 256
-kInputPatchSize = 64
+kOutputPatchSize = 64
+kInputPatchSize = kOutputPatchSize + 2 * kInputPadding
 
 
 def getModel():
@@ -10,12 +12,11 @@ def getModel():
     print("Input shape: " + str(inputShape))
     # See section 6 here:
     # https://towardsdatascience.com/a-comprehensive-introduction-to-different-types-of-convolutions-in-deep-learning-669281e58215
-    model.add(tf.keras.layers.Conv2DTranspose(
+    model.add(tf.keras.layers.Conv2D(
         3,  # Number of filters
         13,
-        padding='same',
-        output_padding=kScaleFactor - 1,
-        strides=kScaleFactor,
+        padding='valid',
+        strides=1,
         activation='linear',
         input_shape=inputShape,
         kernel_initializer='zeros'))

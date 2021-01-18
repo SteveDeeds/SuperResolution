@@ -4,44 +4,25 @@ import cv2
 import glob
 import os
 import random
-from tensorflow.keras import backend as K
 
-import smaller_model as model_def
+import bigger_model as model_def
 
 
 def getModel():
     model = model_def.getModel()
-    assert(model.output.shape[1] == model_def.kOutputPatchSize)
     model.summary()
+    assert(model.output.shape[1] == model_def.kOutputPatchSize)
     return model
 
 
-def my_psnr(y_true, y_pred):
-    mse = K.mean(K.square(y_true - y_pred))
-    if(mse == 0):  # MSE is zero means no noise is present in the signal .
-        # Therefore PSNR have no importance.
-        return -100.0
-    max_pixel = 1.0
-    psnr = 20 * K.log(max_pixel / K.sqrt(mse))
-    return -psnr
-    # #difference between true label and predicted label
-    # error = y_true-y_pred
-    # #square of the error
-    # sqr_error = K.square(error)
-    # #mean of the square of the error
-    # mean_sqr_error = K.mean(sqr_error)
-    # #square root of the mean of the square of the error
-    # sqrt_mean_sqr_error = K.sqrt(mean_sqr_error)
-    # #return the error
-    # return sqrt_mean_sqr_error
-
-
-def getSmallImage(image):
+def getBlurryImage(image):
     height = image.shape[1]
     width = image.shape[0]
     small = cv2.resize(image, dsize=(
-        int(height / kScaleFactor), int(width / kScaleFactor)))
-    return small
+        int(height / model_def.kScaleFactor),
+        int(width / model_def.kScaleFactor)))
+    blurry = cv2.resize(small, dsize=(height, width))
+    return blurry
 
 
 def getPatch(image, x1, y1, size):
@@ -50,44 +31,45 @@ def getPatch(image, x1, y1, size):
     return image[x1:x2, y1:y2, 0:3]
 
 
-def getIOPair(sharp, small):
-    width = small.shape[0]
-    height = small.shape[1]
+def getIOPair(sharp, blurry):
+    width = blurry.shape[0]
+    height = blurry.shape[1]
     x1 = np.random.randint(0, width - model_def.kInputPatchSize)
     y1 = np.random.randint(0, height - model_def.kInputPatchSize)
-    smallPatch = getPatch(small, x1, y1, model_def.kInputPatchSize)
+    blurryPatch = getPatch(blurry, x1, y1, model_def.kInputPatchSize)
     sharpPatch = getPatch(
         sharp,
-        (x1 + model_def.kInputPadding) * model_def.kScaleFactor,
-        (y1 + model_def.kInputPadding) * model_def.kScaleFactor, model_def.kOutputPatchSize)
-    return (smallPatch, sharpPatch)
+        x1 + model_def.kInputPadding,
+        y1 + model_def.kInputPadding,
+        model_def.kOutputPatchSize)
+    return (blurryPatch, sharpPatch)
 
 
-def getTrainingPatches(sharp, small, count):
+def getTrainingPatches(sharp, blurry, count):
     inputPatches = np.empty(
         shape=(0, model_def.kInputPatchSize, model_def.kInputPatchSize, 3), dtype='float32')
     outputPatches = np.empty(
         shape=(0, model_def.kOutputPatchSize, model_def.kOutputPatchSize, 3), dtype='float32')
     for index in range(0, count):
-        (i, o) = getIOPair(sharp, small)
+        (i, o) = getIOPair(sharp, blurry)
         inputPatches = np.append(inputPatches, [i], axis=0)
         outputPatches = np.append(outputPatches, [o], axis=0)
     return (inputPatches, outputPatches)
 
 
-def getCoveringPatches(small, patchSize):
+def getCoveringPatches(blurry, patchSize):
     patches = np.empty(
         shape=(0, patchSize, patchSize, 3), dtype='float32')
-    width = small.shape[0]
-    height = small.shape[1]
+    width = blurry.shape[0]
+    height = blurry.shape[1]
     x1 = 0
     while True:
         x2 = x1 + patchSize
         y1 = 0
         while True:
             y2 = y1 + patchSize
-            smallPatch = small[x1:x2, y1:y2, 0:3]
-            patches = np.append(patches, [smallPatch], axis=0)
+            blurryPatch = blurry[x1:x2, y1:y2, 0:3]
+            patches = np.append(patches, [blurryPatch], axis=0)
             y1 = y2
             if (y1 + patchSize > height):
                 break
@@ -126,7 +108,7 @@ def evalModel(model, inputs, truths):
         print("Output file: " + outputFile)
         inputImg = cv2.resize(
             inputs[index, :, :, :] * 255,
-            dsize=(kOutputPatchSize, kOutputPatchSize),
+            dsize=(model_def.kOutputPatchSize, model_def.kOutputPatchSize),
             interpolation=cv2.INTER_NEAREST)
         outputImg = np.array(outputs[index, :, :, :]) * 255
         truthImg = truths[index, :, :, :] * 255
@@ -139,22 +121,25 @@ def evalModel(model, inputs, truths):
 def addIOFromImage(filename, inputs, outputs):
     original = cv2.imread(
         os.path.join(filename)) / 255
-    small = getSmallImage(original)
+    blurry = getBlurryImage(original)
     print("Original shape: " + str(original.shape))
-    print("Small shape: " + str(small.shape))
+    print("Blurry shape: " + str(blurry.shape))
 
-    (newIns, newOuts) = getTrainingPatches(original, small, 10)
+    (newIns, newOuts) = getTrainingPatches(original, blurry, 10)
     return (np.append(inputs, newIns, axis=0),
             np.append(outputs, newOuts, axis=0))
 
 
 def main():
-    model = getBiggerModel()
+    model = getModel()
 
-    inputs = np.empty((0, kInputPatchSize, kInputPatchSize, 3))
-    outputs = np.empty((0, kOutputPatchSize, kOutputPatchSize, 3))
+    inputs = np.empty((0, model_def.kInputPatchSize,
+                       model_def.kInputPatchSize, 3))
+    outputs = np.empty((0, model_def.kOutputPatchSize,
+                        model_def.kOutputPatchSize, 3))
 
     fileNames = glob.glob(os.path.join("input", "*.jpg"))
+    fileNames.extend(glob.glob(os.path.join("input", "*.png")))
     for fname in fileNames:
         (inputs, outputs) = addIOFromImage(fname, inputs, outputs)
 
