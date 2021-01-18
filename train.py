@@ -48,10 +48,13 @@ def loadImages():
     for fname in fileNames:
         tImage = cv2.imread(fname)
         tImage = cv2.resize(tImage,(270,270))
+        #tImage = cv2.resize(tImage,(260,260))
         sharpImage = tImage[7:263, 7:263]
+        #sharpImage = tImage[2:258, 2:258]
         sharpArray.append(np.asarray(sharpImage) / 255.)
         tImage = cv2.resize(tImage,(64,64), interpolation=cv2.INTER_CUBIC)
         tImage = cv2.resize(tImage,(270,270), interpolation=cv2.INTER_CUBIC)
+        #tImage = cv2.resize(tImage,(65,65), interpolation=cv2.INTER_CUBIC)
         #tImage = desaturate(tImage, 0.5)
         #tImage = tImage / 10. # darken
         #row,col = tImage.shape
@@ -87,51 +90,62 @@ class CenterAround(tf.keras.constraints.Constraint):
     return {'ref_value': self.ref_value}
 
 def my_psnr(y_true, y_pred):
-    mse = K.mean(K.square(y_true - y_pred)) 
-    if(mse == 0):  # MSE is zero means no noise is present in the signal . 
+  temp_true = y_true * 255
+  temp_pred = y_pred * 255
+  mse = K.mean(K.square(temp_true - temp_pred)) 
+  if(mse == 0):  # MSE is zero means no noise is present in the signal . 
                   # Therefore PSNR have no importance. 
-        return -100.0
-    max_pixel = 1.0
-    psnr = 20 * K.log(max_pixel / K.sqrt(mse)) 
-    return -psnr 
-    # #difference between true label and predicted label
-    # error = y_true-y_pred    
-    # #square of the error
-    # sqr_error = K.square(error)
-    # #mean of the square of the error
-    # mean_sqr_error = K.mean(sqr_error)
-    # #square root of the mean of the square of the error
-    # sqrt_mean_sqr_error = K.sqrt(mean_sqr_error)
-    # #return the error
-    # return sqrt_mean_sqr_error
+      return -100.0
+  max_pixel = 255
+  psnr = 20 * K.log(max_pixel / K.sqrt(mse)) 
+  return -psnr 
+  # #difference between true label and predicted label
+  # error = y_true-y_pred    
+  # #square of the error
+  # sqr_error = K.square(error)
+  # #mean of the square of the error
+  # mean_sqr_error = K.mean(sqr_error)
+  # #square root of the mean of the square of the error
+  # sqrt_mean_sqr_error = K.sqrt(mean_sqr_error)
+  # #return the error
+  # return sqrt_mean_sqr_error
 
 loadImages()
 
-# l_input = tf.keras.layers.Input(shape=(64,64,3))
-# l_scaled_input = tf.keras.layers.UpSampling2D((4,4), interpolation="bilinear")(l_input)
-# l_h1 = tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same')(l_input)
-# l_h2 = tf.keras.layers.Conv2D(256, 9, activation='relu', padding='same')(l_h1)
-# l_h3 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='same')(l_h2)
-# l_h4 = tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='same')(l_h3)
-# l_output = tf.keras.layers.Add()([l_scaled_input, l_h4])
-# model = tf.keras.models.Model(inputs=l_input, outputs=l_output)
+# model = tf.keras.Sequential()
+# model.add(tf.keras.layers.Input(shape=(65,65,3)))
+# model.add(tf.keras.layers.Conv2DTranspose(256, 3, strides=2, output_padding=1, activation='linear', padding='same'))
+# model.add(tf.keras.layers.Conv2DTranspose(128, 3, strides=2, output_padding=1, activation='linear', padding='same'))
+# model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
 # model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
 # model.summary()
 
+# l_input = tf.keras.layers.Input(shape=(270,270,3))
+# l_input_crop = tf.keras.layers.Cropping2D(7)(l_input)
+# #l_h1 = tf.keras.layers.Conv2DTranspose(3, 3, strides=4, output_padding=3, activation='linear', padding='same')(l_input)
+# l_h2 = tf.keras.layers.Conv2D(256, 9, activation='relu', padding='valid')(l_input)
+# l_h3 = tf.keras.layers.Conv2D(128, 3, activation='relu', padding='valid')(l_h2)
+# l_h4 = tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid')(l_h3)
+# l_output = tf.keras.layers.Add()([l_input_crop, l_h4])
+# model = tf.keras.models.Model(inputs=l_input, outputs=l_output)
+# model.compile(loss=tf.keras.losses.MeanSquaredError(), optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+# model.summary()
 
-model = tf.keras.Sequential()
-model.add(tf.keras.layers.Input(shape=(270,270,3)))
-model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='valid'))
-model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='valid'))
-model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
-model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
-model.summary()
 
-checkpoint = tf.keras.callbacks.ModelCheckpoint("check_{epoch}.hdf5", monitor='val_loss', verbose=1, save_best_only=False,
-                                 save_weights_only=False)
+# model = tf.keras.Sequential()
+# model.add(tf.keras.layers.Input(shape=(270,270,3)))
+# model.add(tf.keras.layers.Conv2D(128, 9, activation='relu', padding='valid'))
+# model.add(tf.keras.layers.Conv2D(64, 3, activation='relu', padding='valid'))
+# model.add(tf.keras.layers.Conv2D(3, 5, activation='hard_sigmoid', padding='valid'))
+# model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(0.001), metrics=['mean_squared_error','accuracy'])
+# model.summary()
 
+checkpoint = tf.keras.callbacks.ModelCheckpoint("check_5k+{epoch}.hdf5", monitor='val_loss', verbose=1, save_best_only=False, save_weights_only=False)
 
-history = model.fit(x=np.asarray(bluryArray), y=np.asarray(sharpArray), epochs=5000, batch_size=10,callbacks=[checkpoint],verbose=1)
+from keras.models import load_model
+model = load_model("check_5000.hdf5", custom_objects={'my_psnr': my_psnr})
+
+history = model.fit(x=np.asarray(bluryArray), y=np.asarray(sharpArray), epochs=50000, batch_size=10,callbacks=[checkpoint],verbose=1)
 print(history.history['loss'])
 print("Finished training the model")
 

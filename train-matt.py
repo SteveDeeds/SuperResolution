@@ -60,20 +60,14 @@ def my_psnr(y_true, y_pred):
 
 def getBiggerModel():
     model = tf.keras.Sequential()
-    inputShape = (kInputPatchSize, kInputPatchSize, 3)
-    print("Input shape: " + str(inputShape))
-    model.add(tf.keras.layers.Conv2DTranspose(
-        32,  # Number of filters
-        9,
-        padding='same',
-        output_padding=kScaleFactor - 1,
-        strides=kScaleFactor,
-        activation='linear',
-        input_shape=inputShape,
-        kernel_initializer='zeros'))
-    model.add(tf.keras.layers.Conv2D(16, 3, activation='relu', padding='same'))
+    # with filter sizes of 9, 3, and 5 the input needs to be 270x270 for a 256x256 output 256 + 9 - 1 + 3 -1 + 5 - 1 = 270
+    model.add(tf.keras.layers.Input(shape=(270, 270, 3)))
     model.add(tf.keras.layers.Conv2D(
-        3, 5, activation='hard_sigmoid', padding='same'))
+        128, 9, activation='relu', padding='valid'))
+    model.add(tf.keras.layers.Conv2D(
+        64, 3, activation='relu', padding='valid'))
+    model.add(tf.keras.layers.Conv2D(
+        3, 5, activation='hard_sigmoid', padding='valid'))
     model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(
         0.001), metrics=['mean_squared_error', 'accuracy'])
     model.summary()
