@@ -6,34 +6,12 @@ import os
 import random
 from tensorflow.keras import backend as K
 
-
-kInputPadding = 4
-kScaleFactor = 4
-kOutputPatchSize = 256
-
-kInputPatchSize = int(kOutputPatchSize / kScaleFactor)
+import smaller_model as model_def
 
 
 def getModel():
-    model = tf.keras.Sequential()
-    inputShape = (kInputPatchSize, kInputPatchSize, 3)
-    print("Input shape: " + str(inputShape))
-    # See section 6 here:
-    # https://towardsdatascience.com/a-comprehensive-introduction-to-different-types-of-convolutions-in-deep-learning-669281e58215
-    model.add(tf.keras.layers.Conv2DTranspose(
-        3,  # Number of filters
-        13,
-        padding='same',
-        output_padding=kScaleFactor - 1,
-        strides=kScaleFactor,
-        activation='linear',
-        input_shape=inputShape,
-        kernel_initializer='zeros'))
-    print("Output shape: " + str(model.output.shape))
-    assert(model.output.shape[1] == kOutputPatchSize)
-    model.compile(loss=tf.keras.losses.MeanSquaredError(),
-                  optimizer=tf.keras.optimizers.Adam(
-        0.01), metrics=['mean_squared_error', 'accuracy'])
+    model = model_def.getModel()
+    assert(model.output.shape[1] == model_def.kOutputPatchSize)
     model.summary()
     return model
 
@@ -58,22 +36,6 @@ def my_psnr(y_true, y_pred):
     # return sqrt_mean_sqr_error
 
 
-def getBiggerModel():
-    model = tf.keras.Sequential()
-    # with filter sizes of 9, 3, and 5 the input needs to be 270x270 for a 256x256 output 256 + 9 - 1 + 3 -1 + 5 - 1 = 270
-    model.add(tf.keras.layers.Input(shape=(270, 270, 3)))
-    model.add(tf.keras.layers.Conv2D(
-        128, 9, activation='relu', padding='valid'))
-    model.add(tf.keras.layers.Conv2D(
-        64, 3, activation='relu', padding='valid'))
-    model.add(tf.keras.layers.Conv2D(
-        3, 5, activation='hard_sigmoid', padding='valid'))
-    model.compile(loss=my_psnr, optimizer=tf.keras.optimizers.Adam(
-        0.001), metrics=['mean_squared_error', 'accuracy'])
-    model.summary()
-    return model
-
-
 def getSmallImage(image):
     height = image.shape[1]
     width = image.shape[0]
@@ -89,21 +51,23 @@ def getPatch(image, x1, y1, size):
 
 
 def getIOPair(sharp, small):
-    width = sharp.shape[0] / kScaleFactor
-    height = sharp.shape[1] / kScaleFactor
-    x1 = np.random.randint(0, width - kInputPatchSize)
-    y1 = np.random.randint(0, height - kInputPatchSize)
-    sharpPatch = getPatch(sharp,
-                          x1 * kScaleFactor, y1 * kScaleFactor, kOutputPatchSize)
-    smallPatch = getPatch(small, x1, y1, kInputPatchSize)
+    width = small.shape[0]
+    height = small.shape[1]
+    x1 = np.random.randint(0, width - model_def.kInputPatchSize)
+    y1 = np.random.randint(0, height - model_def.kInputPatchSize)
+    smallPatch = getPatch(small, x1, y1, model_def.kInputPatchSize)
+    sharpPatch = getPatch(
+        sharp,
+        (x1 + model_def.kInputPadding) * model_def.kScaleFactor,
+        (y1 + model_def.kInputPadding) * model_def.kScaleFactor, model_def.kOutputPatchSize)
     return (smallPatch, sharpPatch)
 
 
 def getTrainingPatches(sharp, small, count):
     inputPatches = np.empty(
-        shape=(0, kInputPatchSize, kInputPatchSize, 3), dtype='float32')
+        shape=(0, model_def.kInputPatchSize, model_def.kInputPatchSize, 3), dtype='float32')
     outputPatches = np.empty(
-        shape=(0, kOutputPatchSize, kOutputPatchSize, 3), dtype='float32')
+        shape=(0, model_def.kOutputPatchSize, model_def.kOutputPatchSize, 3), dtype='float32')
     for index in range(0, count):
         (i, o) = getIOPair(sharp, small)
         inputPatches = np.append(inputPatches, [i], axis=0)
