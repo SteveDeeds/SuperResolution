@@ -11,18 +11,20 @@ import bigger_model as model_def
 kWriteInputPatches = False
 
 
-def imageFromPatches(patches, horizontalPatchCount):
-    resultImage = np.empty((0, 0, model_def.kInputPatchSize, 3), dtype='float')
+def imageFromPatches(patches, verticalPatchCount):
+    resultImage = np.empty(
+        (0, model_def.kInputPatchSize * verticalPatchCount, 3), dtype='float32')
 
     i = 0
     while (i < len(patches)):
         resultLine = np.empty(
-            (0, 0, model_def.kInputPatchSize, 3), dtype='float')
-        for x in range(0, horizontalPatchCount):
-            resultLine = np.append(resultImage, patches[i], axis=1)
+            (model_def.kInputPatchSize, 0, 3), dtype='float32')
+        for y in range(0, verticalPatchCount):
+            resultLine = np.append(resultLine, patches[i], axis=1)
+            i += 1
         resultImage = np.append(resultImage, resultLine, axis=0)
 
-        return resultImage
+    return resultImage
 
 
 def main():
@@ -50,14 +52,15 @@ def main():
     #         os.path.join("eval", "output-patch" + str(i) + ".png"),
     #         patch * 255.0)
     #     i = i + 1
-    horizontalPatchCount = (
-        blurry.shape[0]
+    verticalPatchCount = int(
+        blurry.shape[1]  # Should be img.shape[1]
         / (model_def.kInputPatchSize - 2 * model_def.kInputPadding))
 
     # Because model loading failed, I'm using 'patches' here but
     # it really should be 'results'.
-    assembled = imageFromPatches(patches, horizontalPatchCount)
-    cv2.imwrite(assembled * 255, os.path.join("eval", "assembled.png"))
+    assembled = imageFromPatches(patches, verticalPatchCount)
+    print("Final shape: " + str(assembled.shape))
+    cv2.imwrite(os.path.join("eval", "assembled.png"), assembled * 255.0)
 
 
 if __name__ == "__main__":
