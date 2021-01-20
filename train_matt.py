@@ -57,11 +57,12 @@ def getTrainingPatches(sharp, blurry, count):
     return (inputPatches, outputPatches)
 
 
-def getCoveringPatches(blurry, patchSize):
+def getCoveringPatches(blurry, patchSize, padding):
     patches = np.empty(
         shape=(0, patchSize, patchSize, 3), dtype='float32')
     width = blurry.shape[0]
     height = blurry.shape[1]
+    stride = patchSize - 2 * padding
     x1 = 0
     while True:
         x2 = x1 + patchSize
@@ -70,10 +71,10 @@ def getCoveringPatches(blurry, patchSize):
             y2 = y1 + patchSize
             blurryPatch = blurry[x1:x2, y1:y2, 0:3]
             patches = np.append(patches, [blurryPatch], axis=0)
-            y1 = y2
+            y1 += stride
             if (y1 + patchSize > height):
                 break
-        x1 = x2
+        x1 += stride
         if (x1 + patchSize > width):
             break
     return patches
