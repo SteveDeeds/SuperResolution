@@ -33,6 +33,8 @@ def main():
     fileNames = glob.glob(os.path.join("input", "*.jpg"))
     fileNames.extend(glob.glob(os.path.join("input", "*.png")))
     img = cv2.imread(fileNames[0]) / 255.0
+    img = cv2.resize(img, (256, 256))
+    cv2.imwrite(os.path.join("eval", "truth.png"), img * 255.0)
     blurry = train_matt.getBlurryImage(img)
     patches = train_matt.getCoveringPatches(
         blurry, model_def.kInputPatchSize, model_def.kInputPadding)
@@ -43,12 +45,20 @@ def main():
                 os.path.join("eval", "input-patch" + str(i) + ".png"),
                 patch * 255.0)
             i = i + 1
-    model = load_model("check_10.hdf5",
+    # Loading the model fails for me, so I'm commenting this out
+    model = load_model("checkpoint.hdf5",
                        custom_objects={'my_psnr': model_def.my_psnr})
     results = model.predict(patches)
+    # # output = imageFromPatches(results)
+    # i = 0
+    # for patch in results:
+    #     cv2.imwrite(
+    #         os.path.join("eval", "output-patch" + str(i) + ".png"),
+    #         patch * 255.0)
+    #     i = i + 1
     verticalPatchCount = int(
-        blurry.shape[1]  # Should be img.shape[1]
-        / (model_def.kOutputPatchSize - 2 * model_def.kInputPadding))
+        (img.shape[1]-model_def.kInputPadding*2)  # Should be img.shape[1]
+        / model_def.kOutputPatchSize)
 
     # Because model loading failed, I'm using 'patches' here but
     # it really should be 'results'.
