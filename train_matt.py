@@ -7,6 +7,8 @@ import random
 
 import bigger_model as model_def
 
+kEpochCount = 5000
+
 
 def getModel():
     model = model_def.getModel()
@@ -82,7 +84,6 @@ def getCoveringPatches(blurry, patchSize, padding):
 
 def trainModel(model, inputs, outputs):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        #"check_{epoch}.hdf5", monitor='val_loss', verbose=1,
         "checkpoint.hdf5", monitor='val_loss', verbose=1,
         save_best_only=False, save_weights_only=False)
 
@@ -94,7 +95,7 @@ def trainModel(model, inputs, outputs):
 
     history = model.fit(
         x=inputTensor, y=outputTensor,
-        epochs=5000, batch_size=10, callbacks=[checkpoint], verbose=1)
+        epochs=kEpochCount, batch_size=10, callbacks=[checkpoint], verbose=1)
     print(history.history['loss'])
 
 
@@ -123,7 +124,11 @@ def evalModel(model, inputs, truths):
 def addIOFromImage(filename, inputs, outputs):
     original = cv2.imread(
         os.path.join(filename)) / 255
-    original = cv2.resize(original,(256,256))
+    size = min(original.shape[0], original.shape[1])
+    original = original[0:size][0:size]
+    inputSize = 256 + 2 * model_def.kInputPadding
+    original = cv2.resize(original, (inputSize, inputSize),
+                          interpolation=cv2.INTER_LINEAR)
     blurry = getBlurryImage(original)
     print("Original shape: " + str(original.shape))
     print("Blurry shape: " + str(blurry.shape))
