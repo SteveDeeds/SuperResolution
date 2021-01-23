@@ -82,7 +82,8 @@ def getCoveringPatches(blurry, patchSize, padding):
 
 def trainModel(model, inputs, outputs):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        "check_{epoch}.hdf5", monitor='val_loss', verbose=1,
+        #"check_{epoch}.hdf5", monitor='val_loss', verbose=1,
+        "checkpoint.hdf5", monitor='val_loss', verbose=1,
         save_best_only=False, save_weights_only=False)
 
     inputTensor = tf.constant(inputs, 'float32')
@@ -93,7 +94,7 @@ def trainModel(model, inputs, outputs):
 
     history = model.fit(
         x=inputTensor, y=outputTensor,
-        epochs=10, batch_size=100, callbacks=[checkpoint], verbose=1)
+        epochs=5000, batch_size=10, callbacks=[checkpoint], verbose=1)
     print(history.history['loss'])
 
 
@@ -122,6 +123,7 @@ def evalModel(model, inputs, truths):
 def addIOFromImage(filename, inputs, outputs):
     original = cv2.imread(
         os.path.join(filename)) / 255
+    original = cv2.resize(original,(256,256))
     blurry = getBlurryImage(original)
     print("Original shape: " + str(original.shape))
     print("Blurry shape: " + str(blurry.shape))
