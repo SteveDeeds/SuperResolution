@@ -4,3 +4,7 @@ eval/**
 Adam0.001.txt
 psnrLog.txt
 .vs/slnx.sqlite
+.vs/SuperResolution/v16/.suo
+.vs/VSWorkspaceState.json
+__pycache__/bigger_model.cpython-37.pyc
+__pycache__/train_matt.cpython-37.pyc
