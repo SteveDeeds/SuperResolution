@@ -8,11 +8,16 @@ import random
 import bigger_model as model_def
 
 kEpochCount = 5000
+kMaxImages = 3
+kTrainingPatchesPerImage = 100
+kBatchSize = 10
 
 
 def getModel():
     model = model_def.getModel()
     model.summary()
+    print("output of model: " + str(model.output.shape[1]))
+    print("training patch size: " + str(model_def.kOutputPatchSize))
     assert(model.output.shape[1] == model_def.kOutputPatchSize)
     return model
 
@@ -95,7 +100,8 @@ def trainModel(model, inputs, outputs):
 
     history = model.fit(
         x=inputTensor, y=outputTensor,
-        epochs=kEpochCount, batch_size=10, callbacks=[checkpoint], verbose=1)
+        epochs=kEpochCount, batch_size=kBatchSize,
+        callbacks=[checkpoint], verbose=1)
     print(history.history['loss'])
 
 
@@ -133,7 +139,8 @@ def addIOFromImage(filename, inputs, outputs):
     print("Original shape: " + str(original.shape))
     print("Blurry shape: " + str(blurry.shape))
 
-    (newIns, newOuts) = getTrainingPatches(original, blurry, 10)
+    (newIns, newOuts) = getTrainingPatches(original, blurry,
+                                           kTrainingPatchesPerImage)
     return (np.append(inputs, newIns, axis=0),
             np.append(outputs, newOuts, axis=0))
 
@@ -148,8 +155,12 @@ def main():
 
     fileNames = glob.glob(os.path.join("input", "*.jpg"))
     fileNames.extend(glob.glob(os.path.join("input", "*.png")))
+    i = 0
     for fname in fileNames:
         (inputs, outputs) = addIOFromImage(fname, inputs, outputs)
+        i += 1
+        if i >= kMaxImages:
+            break
 
     print("Inputs shape: " + str(inputs.shape))
 
