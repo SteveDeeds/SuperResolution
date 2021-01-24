@@ -32,22 +32,16 @@ generatorLayers = []
 
 def addGenerator(model):
     print("Creating generator")
-    # print("Generator incoming size: " +
-    #       str(model.layers[len(model.layers)-1].shape))
-    # print("Expected size: " + str(kInputPatchSize))
-    # assert(model.output_shape[0] == kInputPatchSize)
     if len(generatorLayers) == 0:
         generatorLayers.append(
             tf.keras.layers.AveragePooling2D(pool_size=(4, 4)))
         generatorLayers.append(tf.keras.layers.Conv2DTranspose(
-            3, 4, strides=4, activation='linear'))
+            3, 4, strides=4, activation='hard_sigmoid',
+            kernel_initializer='zeros',
+            bias_initializer='zeros'))
 
     for gl in generatorLayers:
         model.add(gl)
-
-    # print("Generator output size: " + str(model.output_shape[0]))
-    # print("Expected size: " + str(kOutputPatchSize))
-    # assert(model.output_shape[0] == kOutputPatchSize)
 
 
 def getFusedModel():
@@ -85,20 +79,30 @@ discriminatorLayers = []
 def addDiscriminator(model):
     if len(discriminatorLayers) == 0:
         discriminatorLayers.append(tf.keras.layers.Conv2D(
-            1, 3, activation='linear', padding='valid'))
+            3, 3, activation='linear', padding='valid'))
         discriminatorLayers.append(
             tf.keras.layers.MaxPooling2D(pool_size=(4, 4)))
         discriminatorLayers.append(tf.keras.layers.Conv2D(
-            1, 3, activation='linear', padding='valid'))
+            3, 3, activation='linear', padding='valid'))
         discriminatorLayers.append(
             tf.keras.layers.MaxPooling2D(pool_size=(4, 4)))
         discriminatorLayers.append(
             tf.keras.layers.Flatten())
         discriminatorLayers.append(
-            tf.keras.layers.Dense(units=1, activation='sigmoid'))
+            tf.keras.layers.Dense(units=1, activation='relu'))
 
     for dl in discriminatorLayers:
         model.add(dl)
+
+
+def freezeDiscriminator():
+    for l in discriminatorLayers:
+        l.trainable = False
+
+
+def thawDiscriminator():
+    for l in discriminatorLayers:
+        l.trainable = True
 
 
 def getDiscriminator():

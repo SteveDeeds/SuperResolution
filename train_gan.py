@@ -7,11 +7,11 @@ import random
 
 import gan_model as model_def
 
-kEpochCount = 5
-kMaxImages = 3
+kEpochCount = 1
+kMaxImages = 10
 kTrainingPatchesPerImage = 100
 kBatchSize = 100
-kCycleCount = 300
+kCycleCount = 100
 
 
 def getFusedModel():
@@ -71,6 +71,7 @@ def getTrainingPatches(sharp, blurry, count):
 
 
 def trainFusedModel(model, inputs):
+    model_def.freezeDiscriminator()
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
         "fused_checkpoint.hdf5", monitor='val_loss', verbose=1,
         save_best_only=False, save_weights_only=False)
@@ -82,7 +83,8 @@ def trainFusedModel(model, inputs):
         x=inputTensor, y=outputTensor,
         epochs=kEpochCount, batch_size=kBatchSize,
         callbacks=[checkpoint], verbose=1)
-    print(history.history['loss'])
+    losses = history.history['loss']
+    return losses[len(losses)-1]
 
 
 def trainGeneratorModel(model, inputs, truths):
@@ -97,10 +99,12 @@ def trainGeneratorModel(model, inputs, truths):
         x=inputTensor, y=outputTensor,
         epochs=kEpochCount, batch_size=kBatchSize,
         callbacks=[checkpoint], verbose=1)
-    print(history.history['loss'])
+    losses = history.history['loss']
+    return losses[len(losses)-1]
 
 
 def trainDiscriminatorModel(discriminator, generator, inputs, truths):
+    model_def.thawDiscriminator()
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
         "discriminator_checkpoint.hdf5", monitor='val_loss', verbose=1,
         save_best_only=False, save_weights_only=False)
@@ -120,7 +124,8 @@ def trainDiscriminatorModel(discriminator, generator, inputs, truths):
         x=inputTensor, y=outputTensor,
         epochs=kEpochCount, batch_size=kBatchSize,
         callbacks=[checkpoint], verbose=1)
-    print(history.history['loss'])
+    losses = history.history['loss']
+    return losses[len(losses)-1]
 
 
 def evalModel(generator, inputs, truths):
@@ -189,18 +194,17 @@ def main():
         print("Generative cycle " + str(i) + " of " + str(kCycleCount))
         trainGeneratorModel(generator, inputs, truths)
 
-    # Initial training of the discriminator is pretty quick.
-    for i in range(int(kCycleCount / 4)):
-        print("Discriminator cycle " + str(i) + " of " + str(kCycleCount))
-        trainDiscriminatorModel(discriminator, generator, inputs, truths)
-
-    # TODO: probably best to train the generator until it does something
-    # somewhat sensible before applying GAN
+    fusedError = 1.0
+    discriminatorError = 1.0
 
     for i in range(kCycleCount):
-        print("Fused cycle " + str(i) + " of " + str(kCycleCount))
-        trainFusedModel(fused, inputs)
-        trainDiscriminatorModel(discriminator, generator, inputs, truths)
+        print("discriminator: " + str(discriminatorError) +
+              " fused: " + str(fusedError))
+        if (discriminatorError > fusedError):
+            discriminatorError = trainDiscriminatorModel(
+                discriminator, generator, inputs, truths)
+        else:
+            fusedError = trainFusedModel(fused, inputs)
 
     # TODO: Use different images for evaluation
     evalModel(generator, inputs, truths)
