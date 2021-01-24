@@ -7,11 +7,11 @@ import random
 
 import gan_model as model_def
 
-kEpochCount = 1
+kEpochCount = 5
 kMaxImages = 3
 kTrainingPatchesPerImage = 100
-kBatchSize = 10
-kCycleCount = 20
+kBatchSize = 100
+kCycleCount = 300
 
 
 def getFusedModel():
@@ -77,6 +77,21 @@ def trainFusedModel(model, inputs):
 
     inputTensor = tf.constant(inputs, 'float32')
     outputTensor = tf.constant([1] * len(inputs), 'float32')
+
+    history = model.fit(
+        x=inputTensor, y=outputTensor,
+        epochs=kEpochCount, batch_size=kBatchSize,
+        callbacks=[checkpoint], verbose=1)
+    print(history.history['loss'])
+
+
+def trainGeneratorModel(model, inputs, truths):
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        "generator_checkpoint.hdf5", monitor='val_loss', verbose=1,
+        save_best_only=False, save_weights_only=False)
+
+    inputTensor = tf.constant(inputs, 'float32')
+    outputTensor = tf.constant(truths, 'float32')
 
     history = model.fit(
         x=inputTensor, y=outputTensor,
@@ -170,11 +185,20 @@ def main():
 
     print("Inputs shape: " + str(inputs.shape))
 
+    for i in range(kCycleCount):
+        print("Generative cycle " + str(i) + " of " + str(kCycleCount))
+        trainGeneratorModel(generator, inputs, truths)
+
+    # Initial training of the discriminator is pretty quick.
+    for i in range(int(kCycleCount / 4)):
+        print("Discriminator cycle " + str(i) + " of " + str(kCycleCount))
+        trainDiscriminatorModel(discriminator, generator, inputs, truths)
+
     # TODO: probably best to train the generator until it does something
     # somewhat sensible before applying GAN
 
     for i in range(kCycleCount):
-        print("Cycle " + str(i) + " of " + str(kCycleCount))
+        print("Fused cycle " + str(i) + " of " + str(kCycleCount))
         trainFusedModel(fused, inputs)
         trainDiscriminatorModel(discriminator, generator, inputs, truths)
 
