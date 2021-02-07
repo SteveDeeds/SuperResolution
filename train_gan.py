@@ -110,12 +110,12 @@ def trainDiscriminatorModel(discriminator, generator, inputs, truths):
         save_best_only=False, save_weights_only=False)
 
     # First, evaluate the generator to produce the images to discriminate
-    paintings = generator.predict(inputs)
+    forgeries = generator.predict(inputs)
     ones = np.array([1] * len(truths), 'float32')
-    zeros = np.array([0] * len(paintings), 'float32')
+    zeros = np.array([0] * len(forgeries), 'float32')
     outputs = np.concatenate([ones, zeros], axis=0)
 
-    bothInputs = np.concatenate([truths, paintings], axis=0)
+    bothInputs = np.concatenate([truths, forgeries], axis=0)
 
     inputTensor = tf.constant(bothInputs, 'float32')
     outputTensor = tf.constant(outputs, 'float32')
